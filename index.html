@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>dokno - MPK Mini MK2 Fixer</title>
+    <title>dokno - MPK Mini MK3 Fixer</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #121212; color: #fff; text-align: center; padding: 20px; }
         .card { background: #1e1e1e; border-radius: 16px; padding: 24px; max-width: 400px; margin: 20px auto; border: 1px solid #333; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-        h1 { color: #ff3b30; margin-bottom: 5px; font-size: 28px; font-weight: 800; letter-spacing: -1px; }
+        h1 { color: #007aff; margin-bottom: 5px; font-size: 28px; font-weight: 800; letter-spacing: -1px; }
         p { color: #aaa; font-size: 14px; line-height: 1.5; }
         .status { font-weight: bold; padding: 10px; border-radius: 8px; margin: 15px 0; background: #2a2a2a; color: #ffcc00; font-size: 13px; }
         .success { color: #4cd964; background: rgba(76,217,100,0.1); }
-        button { background: #ff3b30; color: white; border: none; padding: 15px 30px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; transition: 0.2s; }
+        button { background: #007aff; color: white; border: none; padding: 15px 30px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; transition: 0.2s; }
         button:disabled { background: #444; color: #888; cursor: not-allowed; }
-        .steps { text-align: left; background: #1a1a1a; padding: 15px; border-radius: 8px; font-size: 13px; color: #ccc; margin-top: 20px; border-left: 4px solid #ff3b30; }
+        .steps { text-align: left; background: #1a1a1a; padding: 15px; border-radius: 8px; font-size: 13px; color: #ccc; margin-top: 20px; border-left: 4px solid #007aff; }
         ol { margin: 5px 0 0 18px; padding: 0; }
         li { margin-bottom: 8px; }
     </style>
@@ -21,11 +21,11 @@
 <body>
 
     <h1>dokno</h1>
-    <p>Custom Akai MPK Mini MK2 Utility for Koala Sampler</p>
+    <p>Custom Akai MPK Mini MK3 Utility for Koala Sampler</p>
 
     <div class="card">
-        <div id="status" class="status">🔌 Please plug your MPK Mini MK2 into your iPad...</div>
-        <button id="fixBtn" disabled onclick="flashHardware()">Flash Latch Knob (CC 77 → Note C3)</button>
+        <div id="status" class="status">🔌 Please plug your MPK Mini MK3 into your iPad...</div>
+        <button id="fixBtn" disabled onclick="flashHardware()">Flash Latch Knob (CC 77 → Note C3 Toggle)</button>
         
         <div class="steps">
             <strong>How to finalize in Koala:</strong>
@@ -41,16 +41,17 @@
     <script>
         let midiOutput = null;
 
-        // Sysex Header structure for MPK Mini MK2 Program 1
-        const sysexHeader = [0xF0, 0x47, 0x00, 0x7F, 0x01, 0x01, 0x00, 0x64]; 
+        // FIXED: Official Sysex Header structure for the MPK Mini MK3 model array parameters
+        const sysexHeader = [0xF0, 0x47, 0x00, 0x44, 0x01, 0x01, 0x00, 0x64]; 
         const sysexFooter = [0xF7];
 
-        // Base blank layout skeleton byte array for Program 1 data payload (100 bytes total required by Akai)
+        // The MK3 expects an empty 100-byte structure profile array block payload
         let prgData = new Array(100).fill(0);
         
-        // Hard-set Knob 5 parameters explicitly to act as a Note Toggle (Type: Note = 1, Note Num = 60)
-        prgData[28] = 1;  // Change Control Type from CC (0) to MIDI Note (1)
-        prgData[29] = 60; // Assign default MIDI Note value to 60 (Pitch middle C3)
+        // MK3 Specific index registers to set Knob 5 to a Latched Pad Note
+        prgData[20] = 1;  // Sets Control Type register layout parameter from CC (0) to MIDI Note (1)
+        prgData[21] = 60; // Sets core pitch value register to Note 60 (Pitch middle C3)
+        prgData[22] = 1;  // Sets Trigger Toggle mode parameter from Momentary (0) to Toggle/Latch (1)
 
         function initMIDI() {
             if (!navigator.requestMIDIAccess) {
@@ -63,7 +64,7 @@
         function onMIDISuccess(midiAccess) {
             const outputs = Array.from(midiAccess.outputs.values());
             
-            // FIXED: Correctly targets the connection array index pointer
+            // Grabs any connected USB hardware stream port found
             if (outputs.length > 0) {
                 midiOutput = outputs[0]; 
                 const statusDiv = document.getElementById('status');
@@ -86,7 +87,7 @@
                 midiOutput.send(fullMessage);
                 
                 const statusDiv = document.getElementById('status');
-                statusDiv.innerText = "🚀 SUCCESS! Keyboard memory flashed updated.";
+                statusDiv.innerText = "🚀 SUCCESS! MK3 memory flashed updated.";
                 statusDiv.style.background = "rgba(76,217,100,0.2)";
             } catch (err) {
                 alert("Flashing error encountered: " + err.message);
