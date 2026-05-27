@@ -40,19 +40,17 @@
 
     <script>
         let midiOutput = null;
-        const targetCC = 77; // Hex: 4D
 
         // Sysex Header structure for MPK Mini MK2 Program 1
         const sysexHeader = [0xF0, 0x47, 0x00, 0x7F, 0x01, 0x01, 0x00, 0x64]; 
         const sysexFooter = [0xF7];
 
-        // Base blank layout skeleton byte array for Program 1 data payload (100 bytes total required by Akai)
+        // Base blank layout skeleton byte array for Program 1 data payload
         let prgData = new Array(100).fill(0);
         
-        // Hard-set Knob 5 parameters explicitly to act as a Note Toggle (Type: Note = 1, Note Num = 60, Toggle = 1)
-        // Adjusting specific indexes matching Akai hardware byte map layouts for Knob profiles
-        prgData[32] = 1;  // Change Control Type from CC (0) to MIDI Note (1)
-        prgData[33] = 60; // Assign default MIDI Note value to 60 (Musical pitch middle C3)
+        // Target Knob 5 parameters explicitly to act as a Note Toggle
+        prgData[46] = 1;  // Change Control Type from CC (0) to MIDI Note (1)
+        prgData[47] = 60; // Assign default MIDI Note value to 60 (Pitch middle C3)
 
         function initMIDI() {
             if (!navigator.requestMIDIAccess) {
@@ -64,16 +62,17 @@
 
         function onMIDISuccess(midiAccess) {
             const outputs = Array.from(midiAccess.outputs.values());
-            const mpkOutput = outputs.find(o => o.name.toLowerCase().includes('mpk') || o.name.toLowerCase().includes('akai'));
             
-            if (mpkOutput) {
-                midiOutput = mpkOutput;
+            // FIXED: Automatically takes the first connected hardware output, bypassing name-matching filters
+            if (outputs.length > 0) {
+                midiOutput = outputs[0];
                 const statusDiv = document.getElementById('status');
                 statusDiv.innerText = `✅ Connected to: ${midiOutput.name}`;
                 statusDiv.className = "status success";
                 document.getElementById('fixBtn').disabled = false;
             } else {
-                setTimeout(initMIDI, 2000); // Polling until connected hardware initializes
+                // Keep polling every second if nothing is connected
+                setTimeout(initMIDI, 1000); 
             }
         }
 
@@ -84,10 +83,7 @@
         function flashHardware() {
             if (!midiOutput) return;
             try {
-                // Combine custom sysEx protocol framework payload structure packages
                 const fullMessage = [...sysexHeader, ...prgData, ...sysexFooter];
-                
-                // Fire System Exclusive raw binary instruction arrays straight to hardware controller microchip memory cells
                 midiOutput.send(fullMessage);
                 
                 const statusDiv = document.getElementById('status');
